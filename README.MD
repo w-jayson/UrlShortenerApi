@@ -35,7 +35,7 @@ Atualmente, o projeto utiliza a lógica de geração de **strings** aleatórias 
 1.  Certifique-se de ter o **.NET SDK** instalado em sua máquina.
 2.  Clone o repositório:
     ```bash
-    git clone [https://github.com/SEU_USUARIO/UrlShortenerApi.git](https://github.com/SEU_USUARIO/UrlShortenerApi.git)
+    git clone https://github.com/w-jayson/UrlShortenerApi.git
     ```
 3.  Navegue até a pasta do projeto:
     ```bash
@@ -58,7 +58,7 @@ Atualmente, o projeto utiliza a lógica de geração de **strings** aleatórias 
 * **Rota**: `POST /shorten`
 * **Corpo da Requisição (Body)**: 
     ```json
-    "[https://www.google.com](https://www.google.com)"
+    "https://www.google.com"
     ```
 * **Resposta**:
     ```json
