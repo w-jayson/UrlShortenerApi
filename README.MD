@@ -8,7 +8,7 @@ Uma API simples para encurtamento de URLs, desenvolvida em **.NET** para fins de
 
 O objetivo deste projeto é fornecer um serviço que recebe uma URL longa e gera um link curto e único. Ao acessar o link curto, o usuário é redirecionado automaticamente para o destino original.
 
-Atualmente, o projeto utiliza a lógica de geração de **strings** aleatórias de 6 caracteres e armazena os dados utilizando o **Entity Framework Core** com o provedor **In-Memory**.
+Atualmente, o projeto utiliza a Base62 para gerar Url apartir do Id e armazena os dados utilizando o **Entity Framework Core** com o provedor **In-Memory**.
 
 ---
 
@@ -26,7 +26,6 @@ Atualmente, o projeto utiliza a lógica de geração de **strings** aleatórias 
 * **Encurtamento de URL**: Recebe uma URL absoluta e retorna um código único.
 * **Redirecionamento**: Realiza o redirecionamento **HTTP 302** a partir do código encurtado.
 * **Validação**: Verifica se a entrada é uma URL válida antes de processar.
-* **Garantia de Unicidade**: Valida se o código aleatório gerado já existe no banco antes da inserção.
 
 ---
 
@@ -74,7 +73,7 @@ Atualmente, o projeto utiliza a lógica de geração de **strings** aleatórias 
 ---
 
 ## 📌 Próximos Passos (Roadmap)
-
+* [X] Substituir a geração de string aleatório por Base62.
 * [ ] Substituir o armazenamento **In-Memory** por um banco de dados relacional (**SQL Server** ou **PostgreSQL**).
 * [ ] Implementar **Migrations** para gerenciamento do **schema** do banco.
 * [ ] Adicionar suporte a **Custom Aliases** (links personalizados).
