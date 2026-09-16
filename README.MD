@@ -1,6 +1,6 @@
 # UrlShortenerApi
 
-Uma API simples para encurtamento de URLs, desenvolvida em **.NET** para fins de estudo de arquitetura de back-end, **Dependency Injection** e persistência em memória.
+Uma API simples para encurtamento de URLs, desenvolvida em **.NET** para fins de estudo de arquitetura de back-end, **Dependency Injection** e persistência em banco relacional baseado em arquivo (**SQLite**).
 
 ---
 
@@ -8,7 +8,7 @@ Uma API simples para encurtamento de URLs, desenvolvida em **.NET** para fins de
 
 O objetivo deste projeto é fornecer um serviço que recebe uma URL longa e gera um link curto e único. Ao acessar o link curto, o usuário é redirecionado automaticamente para o destino original.
 
-Atualmente, o projeto utiliza a Base62 para gerar Url apartir do Id e armazena os dados utilizando o **Entity Framework Core** com o provedor **In-Memory**.
+Atualmente, o projeto utiliza a Base62 para gerar Url a partir do Id e armazena os dados utilizando o **Entity Framework Core** com o provedor **SQLite**.
 
 ---
 
@@ -16,7 +16,8 @@ Atualmente, o projeto utiliza a Base62 para gerar Url apartir do Id e armazena o
 
 * **.NET 10 (SDK)**
 * **ASP.NET Core Web API**
-* **Entity Framework Core In-Memory**: Para persistência temporária de dados.
+* **Entity Framework Core SQLite**: Persistência baseada em arquivo (`urlshortener.db`).
+* **EF Core Migrations**: Gerenciamento de schema e versionamento de banco.
 * **NSwag**: Para documentação automática e interface de testes (**Swagger UI**).
 
 ---
@@ -40,7 +41,7 @@ Atualmente, o projeto utiliza a Base62 para gerar Url apartir do Id e armazena o
     ```bash
     cd UrlShortenerApi
     ```
-4.  Execute a aplicação:
+4.  Execute a aplicação (as migrações do banco serão aplicadas automaticamente):
     ```bash
     dotnet run
     ```
@@ -62,7 +63,7 @@ Atualmente, o projeto utiliza a Base62 para gerar Url apartir do Id e armazena o
 * **Resposta**:
     ```json
     {
-      "shortUrl": "http://localhost:5070/aB72dz"
+      "shortUrl": "http://localhost:5070/1"
     }
     ```
 
@@ -74,8 +75,8 @@ Atualmente, o projeto utiliza a Base62 para gerar Url apartir do Id e armazena o
 
 ## 📌 Próximos Passos (Roadmap)
 * [X] Substituir a geração de string aleatório por Base62.
-* [ ] Substituir o armazenamento **In-Memory** por um banco de dados relacional (**SQL Server** ou **PostgreSQL**).
-* [ ] Implementar **Migrations** para gerenciamento do **schema** do banco.
+* [X] Substituir o armazenamento **In-Memory** por um banco de dados relacional baseado em arquivo (**SQLite**).
+* [X] Implementar **Migrations** para gerenciamento do **schema** do banco.
 * [ ] Adicionar suporte a **Custom Aliases** (links personalizados).
 * [ ] Implementar métricas de cliques por link.
 * [ ] Adicionar cache com **Redis** para otimizar os redirecionamentos.
