@@ -1,8 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using UrlShortenerApi.Data;
-using UrlShortenerApi.Models;
-using UrlShortenerApi.Services;
+using UrlShortenerApi.Application.UseCases.CreateShortUrl;
+using UrlShortenerApi.Application.UseCases.ResolveShortUrl;
+using UrlShortenerApi.Domain.Exceptions;
 
 namespace UrlShortenerApi.Controllers;
 
@@ -10,48 +9,43 @@ namespace UrlShortenerApi.Controllers;
 [Route("")]
 public class UrlController : ControllerBase
 {
-    private readonly AppDbContext _context;
-    private readonly IBase62Service _base62Service;
+    private readonly CreateShortUrlHandler _createHandler;
+    private readonly ResolveShortUrlHandler _resolveHandler;
 
-    public UrlController(AppDbContext context, IBase62Service base62Service)
+    public UrlController(CreateShortUrlHandler createHandler, ResolveShortUrlHandler resolveHandler)
     {
-        _context = context;
-        _base62Service = base62Service;
-
+        _createHandler = createHandler;
+        _resolveHandler = resolveHandler;
     }
 
     [HttpPost("shorten")]
-    public async Task<IActionResult> Shorten([FromBody] string url)
+    public async Task<IActionResult> Shorten([FromBody] string url, CancellationToken ct)
     {
-        if (!Uri.TryCreate(url, UriKind.Absolute, out _))
-            return BadRequest("URL inválida.");
-
-
-        var shortenedUrl = new ShortenedUrl
+        try
         {
-            OriginalUrl = url,
-            ShortCode = string.Empty
-        };
-
-        _context.ShortenedUrls.Add(shortenedUrl);
-        await _context.SaveChangesAsync();
-
-        shortenedUrl.ShortCode = _base62Service.Encode(shortenedUrl.Id);
-        await _context.SaveChangesAsync();
-
-        return Ok(new { ShortUrl = $"{Request.Scheme}://{Request.Host}/{shortenedUrl.ShortCode}" });
+            var response = await _createHandler.HandleAsync(url, ct);
+            return Ok(new { ShortUrl = $"{Request.Scheme}://{Request.Host}/{response.ShortCode}" });
+        }
+        catch (InvalidUrlException)
+        {
+            return BadRequest("URL inválida.");
+        }
     }
 
     [HttpGet("{code}")]
-    public async Task<IActionResult> RedirectTo(string code)
+    public async Task<IActionResult> RedirectTo(string code, CancellationToken ct)
     {
-        var id = _base62Service.Decode(code);
-        var entry = await _context.ShortenedUrls.FindAsync(id);
+        try
+        {
+            var originalUrl = await _resolveHandler.ResolveAsync(code, ct);
+            if (originalUrl is null)
+                return NotFound("Código de URL não encontrado.");
 
-        if (entry == null)
-            return NotFound("Código de URL não encontrado.");
-
-        return Redirect(entry.OriginalUrl);
+            return Redirect(originalUrl);
+        }
+        catch (InvalidShortCodeException)
+        {
+            return BadRequest("Código de URL inválido.");
+        }
     }
-
 }

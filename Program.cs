@@ -1,6 +1,9 @@
 using Microsoft.EntityFrameworkCore;
-using UrlShortenerApi.Data;
-using UrlShortenerApi.Services;
+using UrlShortenerApi.Application.Abstractions;
+using UrlShortenerApi.Application.UseCases.CreateShortUrl;
+using UrlShortenerApi.Application.UseCases.ResolveShortUrl;
+using UrlShortenerApi.Infrastructure.Persistence;
+using UrlShortenerApi.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,7 +11,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseInMemoryDatabase("UrlDb"));
 
+builder.Services.AddScoped<IShortenedUrlRepository, ShortenedUrlRepository>();
 builder.Services.AddSingleton<IBase62Service, Base62Service>();
+builder.Services.AddScoped<CreateShortUrlHandler>();
+builder.Services.AddScoped<ResolveShortUrlHandler>();
 
 builder.Services.AddControllers();
 
