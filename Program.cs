@@ -14,8 +14,7 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(connectionString));
 
-builder.Services.AddScoped<IShortenedUrlRepository, ShortenedUrlRepository>();
-builder.Services.AddSingleton<IBase62Service, Base62Service>();
+builder.Services.AddSingleton<IShortCodeGenerator, ShortCodeGenerator>();
 builder.Services.AddScoped<CreateShortUrlHandler>();
 builder.Services.AddScoped<ResolveShortUrlHandler>();
 
@@ -27,17 +26,18 @@ builder.Services.AddOpenApiDocument(config =>
     config.PostProcess = document =>
     {
         document.Info.Title = "URL Shortener API";
-        document.Info.Description = "API simples para encurtar URLs com strings aleatórias.";
+        document.Info.Description = "API para encurtar URLs com persistência de código curto, suporte a custom slugs e alta resiliência.";
     };
 });
 
 var app = builder.Build();
 
-// Aplicar migrações pendentes na inicialização
+// Aplicar migrações pendentes e ativar o modo WAL no SQLite
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     dbContext.Database.Migrate();
+    dbContext.Database.ExecuteSqlRaw("PRAGMA journal_mode = WAL;");
 }
 
 app.UseOpenApi();

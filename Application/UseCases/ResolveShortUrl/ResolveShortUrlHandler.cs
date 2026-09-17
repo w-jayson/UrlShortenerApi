@@ -1,22 +1,28 @@
-using UrlShortenerApi.Application.Abstractions;
+using Microsoft.EntityFrameworkCore;
+using UrlShortenerApi.Infrastructure.Persistence;
 
 namespace UrlShortenerApi.Application.UseCases.ResolveShortUrl;
 
 public sealed class ResolveShortUrlHandler
 {
-    private readonly IShortenedUrlRepository _repository;
-    private readonly IBase62Service _base62Service;
+    private readonly AppDbContext _context;
 
-    public ResolveShortUrlHandler(IShortenedUrlRepository repository, IBase62Service base62Service)
+    public ResolveShortUrlHandler(AppDbContext context)
     {
-        _repository = repository;
-        _base62Service = base62Service;
+        _context = context;
     }
 
     public async Task<string?> ResolveAsync(string code, CancellationToken ct = default)
     {
-        var id = _base62Service.Decode(code);
-        var entity = await _repository.GetByIdAsync(id, ct);
-        return entity?.OriginalUrl;
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            return null;
+        }
+
+        return await _context.ShortenedUrls
+            .AsNoTracking()
+            .Where(x => x.Code == code)
+            .Select(x => x.OriginalUrl)
+            .FirstOrDefaultAsync(ct);
     }
 }

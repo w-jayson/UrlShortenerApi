@@ -2,7 +2,8 @@ namespace UrlShortenerApi.Domain.Entities;
 
 public class ShortenedUrl
 {
-    public int Id { get; set; }
-    public string OriginalUrl { get; set; } = string.Empty;
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public long Id { get; init; }
+    public string Code { get; init; } = string.Empty;
+    public string OriginalUrl { get; init; } = string.Empty;
+    public DateTime CreatedAtUtc { get; init; } = DateTime.UtcNow;
 }

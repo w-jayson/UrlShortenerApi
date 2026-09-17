@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using UrlShortenerApi.Application.UseCases.CreateShortUrl;
 using UrlShortenerApi.Application.UseCases.ResolveShortUrl;
-using UrlShortenerApi.Domain.Exceptions;
 
 namespace UrlShortenerApi.Controllers;
 
@@ -19,33 +18,47 @@ public class UrlController : ControllerBase
     }
 
     [HttpPost("shorten")]
-    public async Task<IActionResult> Shorten([FromBody] string url, CancellationToken ct)
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Shorten([FromBody] CreateShortUrlRequest request, CancellationToken ct)
     {
-        try
+        var result = await _createHandler.HandleAsync(request, ct);
+
+        return result.Status switch
         {
-            var response = await _createHandler.HandleAsync(url, ct);
-            return Ok(new { ShortUrl = $"{Request.Scheme}://{Request.Host}/{response.ShortCode}" });
-        }
-        catch (InvalidUrlException)
-        {
-            return BadRequest("URL inválida.");
-        }
+            CreateShortUrlStatus.Success => Created(
+                $"{Request.Scheme}://{Request.Host}/{result.Code}",
+                new
+                {
+                    ShortUrl = $"{Request.Scheme}://{Request.Host}/{result.Code}",
+                    Code = result.Code
+                }),
+
+            CreateShortUrlStatus.InvalidUrl => BadRequest(new { message = result.ErrorMessage }),
+
+            CreateShortUrlStatus.InvalidSlug => BadRequest(new { message = result.ErrorMessage }),
+
+            CreateShortUrlStatus.SlugAlreadyExists => Conflict(new { message = result.ErrorMessage }),
+
+            CreateShortUrlStatus.CollisionConflict => StatusCode(StatusCodes.Status409Conflict, new { message = result.ErrorMessage }),
+
+            _ => StatusCode(StatusCodes.Status500InternalServerError, new { message = "Erro inesperado ao encurtar URL." })
+        };
     }
 
     [HttpGet("{code}")]
+    [ProducesResponseType(StatusCodes.Status302Found)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> RedirectTo(string code, CancellationToken ct)
     {
-        try
-        {
-            var originalUrl = await _resolveHandler.ResolveAsync(code, ct);
-            if (originalUrl is null)
-                return NotFound("Código de URL não encontrado.");
+        var originalUrl = await _resolveHandler.ResolveAsync(code, ct);
 
-            return Redirect(originalUrl);
-        }
-        catch (InvalidShortCodeException)
+        if (originalUrl is null)
         {
-            return BadRequest("Código de URL inválido.");
+            return NotFound(new { message = "Código de URL não encontrado." });
         }
+
+        return Redirect(originalUrl);
     }
 }
