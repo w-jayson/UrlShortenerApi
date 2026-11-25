@@ -8,21 +8,23 @@ Cada fase termina com um **Checkpoint** para conferência e entendimento antes d
 ## Fase 1 — Setup do Projeto e Pipeline HTTP
 
 - [ ] **1.1. Criar solução e projetos**
-  - Criar `UrlShortenerApi.sln`, projeto Web API `src/UrlShortenerApi` (`<Nullable>enable</Nullable>`) e projeto xUnit `tests/UrlShortenerApi.Tests` referenciando a API.
+  - Criar `UrlShortenerApi.sln`, projeto Web API `src/UrlShortenerApi` em **.NET 10** (`net10.0`, `<Nullable>enable</Nullable>`) e projeto xUnit `tests/UrlShortenerApi.Tests` referenciando a API.
   - Criar `.gitignore` padrão .NET (`bin/`, `obj/`, `*.db`, `*.db-shm`, `*.db-wal`).
   - *Conceito:* separação entre solução (`.sln`), código da aplicação (`src/`) e testes (`tests/`), além de `Nullable` habilitado para evitar `NullReferenceException` em tempo de compilação.
 - [ ] **1.2. Instalar pacotes NuGet**
   - `Microsoft.EntityFrameworkCore.Sqlite` (provedor de banco SQLite para EF Core).
   - `Microsoft.EntityFrameworkCore.Design` (ferramenta de design-time para gerar migrations).
+  - `Microsoft.AspNetCore.OpenApi` (geração nativa do documento OpenAPI no .NET 10).
+  - `Scalar.AspNetCore` (interface interativa Scalar para explorar e testar os endpoints).
 - [ ] **1.3. Configurar `Program.cs`**
-  - Registrar `AddControllers()`, OpenAPI/Swagger, `AddProblemDetails()` e `AddHealthChecks()`.
-  - Configurar pipeline: `UseExceptionHandler()` (converte exceções não tratadas em RFC 7807 `ProblemDetails`), HTTPS/Swagger (dev), `MapControllers()` e `MapHealthChecks("/health")`.
+  - Registrar `AddControllers()`, `AddOpenApi()`, `AddProblemDetails()` e `AddHealthChecks()`.
+  - Configurar pipeline: `UseExceptionHandler()` (converte exceções não tratadas em RFC 9457 `ProblemDetails`), HTTPS, `MapOpenApi()` + `MapScalarApiReference()` (em `IsDevelopment()`), `MapControllers()` e `MapHealthChecks("/health")`.
   - Expor `public partial class Program;` ao final para permitir `WebApplicationFactory<Program>` nos testes de integração.
   - *Conceito:* diferença entre registro de serviços (`builder.Services`) e pipeline de middlewares (`app.Use...` / `app.Map...`), e por que `UseExceptionHandler()` + `AddProblemDetails()` padronizam respostas de erro.
 
 **Checkpoint Fase 1:**
 - Rodar `dotnet build` sem erros.
-- Subir a API (`dotnet run`), testar `GET /health` (`200 Healthy`) e abrir o Swagger/OpenAPI.
+- Subir a API (`dotnet run`), testar `GET /health` (`200 Healthy`) e abrir o Scalar (`/scalar/v1`).
 - Conferir e explicar o papel de cada serviço e middleware no `Program.cs`.
 
 ---
@@ -76,7 +78,7 @@ Cada fase termina com um **Checkpoint** para conferência e entendimento antes d
   - *Conceito:* ciclo de vida no DI (`Scoped` vs `Singleton`), diferença entre `301` (permanente/cacheado pelo navegador) e `302` (temporário, permite contar todos os cliques) e mapeamento de `Result<T>` para códigos HTTP.
 
 **Checkpoint Fase 3:**
-- Testar manualmente via Swagger / `.http` / `curl`:
+- Testar manualmente via Scalar (`/scalar/v1`) / `.http` / `curl`:
   1. `POST /api/urls` com URL válida (`201`) e inválida (`400 ProblemDetails`).
   2. `GET /{shortCode}` verificando resposta `302` e header `Location`.
   3. `GET /api/urls/{shortCode}/stats` confirmando incremento de `clickCount` e preenchimento de `lastAccessedAtUtc`, sem alterar `clickCount` ao consultar stats.

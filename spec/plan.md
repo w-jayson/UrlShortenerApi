@@ -46,7 +46,7 @@ UrlShortenerApi/
   - `[HttpPost("api/urls")]` -> cria URL encurtada (`201 Created` ou `400 ProblemDetails`).
   - `[HttpGet("{shortCode}")]` -> resolve e redireciona (`302 Found` ou `404 ProblemDetails`).
   - `[HttpGet("api/urls/{shortCode}/stats")]` -> retorna estatísticas (`200 OK` ou `404 ProblemDetails`).
-- `AddProblemDetails()`, `UseExceptionHandler()` e `MapHealthChecks("/health")` configurados no `Program.cs`.
+- `AddOpenApi()`, `MapOpenApi()` + `MapScalarApiReference()` (dev via `Scalar.AspNetCore`), `AddProblemDetails()`, `UseExceptionHandler()` e `MapHealthChecks("/health")` configurados no `Program.cs` (**.NET 10**).
 
 ### 2.2. `Models/ShortenedUrl.cs` e `Models/Dtos.cs`
 - `ShortenedUrl`: entidade EF Core (`Id`, `OriginalUrl`, `ShortCode`, `ClickCount`, `CreatedAtUtc`, `LastAccessedAtUtc`).
@@ -64,6 +64,7 @@ UrlShortenerApi/
 
 ### 2.4. `Data/AppDbContext.cs` (EF Core + SQLite)
 - Pacotes: `Microsoft.EntityFrameworkCore.Sqlite` e `Microsoft.EntityFrameworkCore.Design`.
+- Connection string configurada em `appsettings.json` (`ConnectionStrings:DefaultConnection`, padrão `Data Source=urlshortener.db`).
 - Índice `UNIQUE` em `ShortCode`, `OriginalUrl` com `MaxLength(2048)` e `ClickCount` com default `0`.
 
 ---

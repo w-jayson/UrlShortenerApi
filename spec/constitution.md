@@ -6,7 +6,7 @@ Este documento define os princípios fundamentais, padrões técnicos e restriç
 
 ## 1. Propósito e Escopo
 
-A **UrlShortenerApi** é uma API REST em **.NET (ASP.NET Core / C#)** para encurtamento de URLs, redirecionamento rápido e coleta de analytics básico (contagem de cliques e metadados essenciais de acesso), utilizando **SQLite** como banco de dados inicial para manter o setup simples e portátil.
+A **UrlShortenerApi** é uma API REST em **.NET 10 (ASP.NET Core / C#)** para encurtamento de URLs, redirecionamento rápido e coleta de analytics básico (contagem de cliques e metadados essenciais de acesso), utilizando **SQLite** como banco de dados inicial para manter o setup simples e portátil.
 
 ---
 
@@ -25,15 +25,17 @@ A **UrlShortenerApi** é uma API REST em **.NET (ASP.NET Core / C#)** para encur
    - Mudanças de contrato ou comportamento exigem atualização prévia da especificação.
 4. **Contratos Explícitos e Padronizados:**
    - Todas as respostas de erro devem seguir o padrão **RFC 9457 / ProblemDetails** (`application/problem+json`).
-   - Schemas de entrada e saída devem ser documentados via **OpenAPI / Swagger**.
+   - Schemas de entrada e saída devem ser documentados via **OpenAPI** e expostos com **Scalar**.
 
 ---
 
 ## 3. Padrões Técnicos e Stack
 
-- **Runtime / Framework:** .NET (ASP.NET Core Web API com **Controllers**), C# com nullable reference types habilitado (`<Nullable>enable</Nullable>`).
+- **Runtime / Framework:** .NET 10 (ASP.NET Core Web API com **Controllers**), C# com nullable reference types habilitado (`<Nullable>enable</Nullable>`).
 - **Persistência:** SQLite com Entity Framework Core (`Microsoft.EntityFrameworkCore.Sqlite`) e Migrations versionadas em `Data/Migrations/`.
-- **Documentação da API:** OpenAPI nativo / Swagger UI habilitado em ambiente de desenvolvimento.
+- **Documentação da API:** OpenAPI nativo (`Microsoft.AspNetCore.OpenApi`) + **Scalar** (`Scalar.AspNetCore`) habilitado em ambiente de desenvolvimento.
+- **Observabilidade:** `ILogger` padrão do ASP.NET Core e endpoint `/health` para health check.
+- **Execução:** Local via `dotnet run` / `dotnet test` (sem Docker ou CI nesta etapa).
 - **Validação:** Data Annotations + `[ApiController]` nos DTOs de entrada, complementados por validações de URL no `UrlShortenerService`.
 - **Testes:** xUnit + `WebApplicationFactory<Program>` para testes de integração e testes unitários para `Services/`.
 
@@ -51,6 +53,8 @@ A **UrlShortenerApi** é uma API REST em **.NET (ASP.NET Core / C#)** para encur
    - Logs estruturados (`ILogger`) não devem expor informações sensíveis ou tokens.
 4. **Concorrência na Contagem de Cliques:**
    - O incremento do contador de cliques deve ser seguro contra condições de corrida (atualização atômica no banco ou registro de evento).
+5. **Escopo de Acesso (Projeto de Estudo):**
+   - API pública sem autenticação e sem Rate Limiting nesta etapa para manter o código enxuto e focado nos fundamentos.
 
 ---
 

@@ -1,114 +1,84 @@
-# Especificação Funcional e Técnica — UrlShortenerApi
+# Especificação Funcional — UrlShortenerApi
 
 ## 1. Visão Geral
 
-A **UrlShortenerApi** permite que clientes encurtem URLs longas em códigos curtos compartilháveis, redirecionem usuários através desses códigos e consultem métricas básicas de acesso (analytics).
+A **UrlShortenerApi** permite encurtar URLs longas em códigos curtos compartilháveis, redirecionar usuários através desses códigos e consultar estatísticas básicas de acesso.
 
 ---
 
 ## 2. Requisitos Funcionais (RF)
 
 ### RF01 — Encurtar URL
-- **Descrição:** O sistema deve receber uma URL longa válida e retornar uma URL encurtada com um código único.
-- **Endpoint:** `POST /api/urls`
-- **Entrada (JSON):**
-  ```json
-  {
-    "originalUrl": "https://exemplo.com/artigo/muito-longo?param=1"
-  }
-  ```
+- **Objetivo:** Receber uma URL longa válida e gerar um código curto único associado a ela.
+- **Entrada esperada:** URL original informada pelo cliente.
 - **Regras de Negócio:**
-  - `originalUrl` é obrigatória, não pode ser vazia e deve ter no máximo `2048` caracteres.
-  - Deve ser uma URL absoluta válida com esquema `http` ou `https`.
-  - O sistema gera um `shortCode` único (ex: 7 caracteres alfanuméricos Base62 `[a-zA-Z0-9]`).
-  - O código gerado é persistido junto com a `originalUrl`, data de criação (`createdAtUtc`) e contador de cliques inicializado em `0`.
-- **Resposta de Sucesso (`201 Created`):**
-  ```json
-  {
-    "id": "a1b2c3d4-...",
-    "originalUrl": "https://exemplo.com/artigo/muito-longo?param=1",
-    "shortCode": "aB3xY9z",
-    "shortUrl": "https://localhost:5001/aB3xY9z",
-    "createdAtUtc": "2026-11-25T14:00:00Z"
-  }
-  ```
-  - Deve incluir o header `Location` apontando para o recurso de detalhes ou URL encurtada.
-- **Respostas de Erro:**
-  - `400 Bad Request` (`ProblemDetails`) quando `originalUrl` estiver ausente, malformada, exceder `2048` caracteres ou usar esquema diferente de `http`/`https`.
+  - A URL original é obrigatória, não pode ser vazia e deve ter no máximo 2048 caracteres após remoção de espaços nas extremidades.
+  - A URL deve ser absoluta e utilizar exclusivamente os protocolos `http` ou `https`.
+  - O sistema gera um código curto único e legível, diferenciando maiúsculas de minúsculas.
+  - O registro nasce com data/hora de criação em UTC e contagem de cliques zerada.
+- **Critérios de Aceite:**
+  - Quando a URL for válida, o sistema persiste o vínculo, retorna os dados da URL encurtada (incluindo o link curto completo e a data de criação) e informa o endereço do recurso criado.
+  - Quando a URL estiver ausente, vazia, malformada, exceder 2048 caracteres ou usar outro protocolo (ex: `javascript:`, `ftp:`), o sistema rejeita a solicitação com erro de validação sem persistir dados.
 
 ---
 
 ### RF02 — Redirecionar para a URL Original
-- **Descrição:** Ao acessar o código curto, o sistema deve redirecionar o cliente para a URL original e contabilizar o clique.
-- **Endpoint:** `GET /{shortCode}`
+- **Objetivo:** Resolver um código curto, contabilizar o acesso e redirecionar o cliente para a URL original.
 - **Regras de Negócio:**
-  - Busca o registro correspondente ao `shortCode` (comparação *case-sensitive* para preservar o espaço de caracteres Base62).
-  - Se encontrado:
-    - Incrementa o contador de cliques (`clickCount`) e atualiza `lastAccessedAtUtc`.
-    - Retorna redirecionamento HTTP (`302 Found` por padrão, evitando cache agressivo de `301` no navegador para que cliques subsequentes continuem sendo contabilizados).
-    - Define o header `Location` com a `originalUrl`.
-  - Se não encontrado:
-    - Retorna `404 Not Found` (`ProblemDetails`).
+  - A busca pelo código curto é sensível a maiúsculas e minúsculas (*case-sensitive*).
+  - Cada redirecionamento bem-sucedido incrementa a contagem total de cliques em 1 e atualiza a data/hora do último acesso (UTC).
+  - O redirecionamento não deve ser armazenado em cache permanente pelo cliente, garantindo que acessos futuros continuem passando pelo sistema e sendo contabilizados.
+- **Critérios de Aceite:**
+  - Se o código existir, o cliente é redirecionado temporariamente para a URL original e o contador de cliques reflete o novo acesso.
+  - Se o código não existir, o sistema informa que o recurso não foi encontrado.
 
 ---
 
-### RF03 — Consultar Analytics Básico da URL
-- **Descrição:** O sistema deve permitir consultar os dados e estatísticas básicas de acesso de uma URL encurtada.
-- **Endpoint:** `GET /api/urls/{shortCode}/stats`
+### RF03 — Consultar Estatísticas da URL
+- **Objetivo:** Permitir a consulta dos metadados e métricas acumuladas de uma URL encurtada.
 - **Regras de Negócio:**
-  - Retorna os metadados da URL encurtada e métricas acumuladas de cliques.
-  - Não incrementa o contador de cliques ao consultar as estatísticas.
-- **Resposta de Sucesso (`200 OK`):**
-  ```json
-  {
-    "id": "a1b2c3d4-...",
-    "originalUrl": "https://exemplo.com/artigo/muito-longo?param=1",
-    "shortCode": "aB3xY9z",
-    "shortUrl": "https://localhost:5001/aB3xY9z",
-    "clickCount": 42,
-    "createdAtUtc": "2026-11-25T14:00:00Z",
-    "lastAccessedAtUtc": "2026-11-25T15:30:00Z"
-  }
-  ```
-- **Respostas de Erro:**
-  - `404 Not Found` (`ProblemDetails`) se o `shortCode` não existir.
+  - A consulta é somente leitura e **não** deve incrementar o contador de cliques nem alterar a data do último acesso.
+- **Critérios de Aceite:**
+  - Se o código existir, retorna a URL original, o código curto, o link encurtado, o total de cliques, a data de criação e a data do último acesso (nula se nunca acessada).
+  - Se o código não existir, o sistema informa que o recurso não foi encontrado.
 
 ---
 
-### RF04 — Health Check
-- **Descrição:** Endpoint para verificação de saúde da API e conectividade com o banco SQLite.
-- **Endpoint:** `GET /health`
-- **Resposta de Sucesso (`200 OK`):** Status `Healthy`.
+### RF04 — Verificação de Saúde
+- **Objetivo:** Disponibilizar um ponto de verificação indicando se o serviço está operacional e apto a responder requisições.
+- **Critérios de Aceite:**
+  - Quando operacional, responde positivamente indicando estado saudável.
 
 ---
 
 ## 3. Requisitos Não-Funcionais (RNF)
 
-- **RNF01 — Persistência:** Os dados devem ser persistidos em arquivo SQLite local (`urlshortener.db` configurável via `ConnectionStrings:DefaultConnection`).
-- **RNF02 — Unicidade e Concorrência:** O campo `ShortCode` deve possuir índice `UNIQUE` no banco de dados. O incremento de cliques deve ser atômico para evitar perda de contagem sob requisições simultâneas.
-- **RNF03 — Padronização de Erros:** Todas as respostas `4xx`/`5xx` devem usar `ProblemDetails`.
-- **RNF04 — Observabilidade:** Logs estruturados para criação de URLs, falhas de validação, redirecionamentos não encontrados e erros inesperados.
-- **RNF05 — Documentação:** Especificação OpenAPI disponível em `/openapi/v1.json` (ou `/swagger`).
+- **RNF01 — Persistência:** Os vínculos entre URLs originais, códigos curtos e contagens de cliques devem sobreviver a reinicializações do serviço.
+- **RNF02 — Unicidade:** Dois vínculos distintos nunca podem possuir o mesmo código curto.
+- **RNF03 — Consistência sob Concorrência:** $N$ redirecionamentos simultâneos para o mesmo código curto devem resultar em exatamente $+N$ no contador de cliques, sem perda de contagem.
+- **RNF04 — Padronização de Respostas de Erro:** Falhas de validação, recursos inexistentes e erros internos devem retornar respostas de erro estruturadas e consistentes.
 
 ---
 
-## 4. Modelo de Dados Conceitual
+## 4. Modelo Conceitual de Domínio
 
-### Entidade `ShortenedUrl`
-| Campo | Tipo | Restrições | Descrição |
-| :--- | :--- | :--- | :--- |
-| `Id` | `Guid` | PK | Identificador único interno |
-| `OriginalUrl` | `string` | Required, MaxLength(2048) | URL original informada |
-| `ShortCode` | `string` | Required, MaxLength(16), Unique Index | Código curto Base62 |
-| `ClickCount` | `long` | Required, Default 0 | Total de redirecionamentos realizados |
-| `CreatedAtUtc` | `DateTime` | Required | Data/hora de criação em UTC |
-| `LastAccessedAtUtc` | `DateTime?` | Nullable | Data/hora do último redirecionamento em UTC |
+### Entidade: `URL Encurtada`
+Representa o vínculo entre um endereço web original e seu identificador curto.
+
+| Atributo | Descrição | Regras Conceituais |
+| :--- | :--- | :--- |
+| Identificador | Identificador interno do registro | Único |
+| URL Original | Endereço web de destino | Obrigatória, absoluta (`http`/`https`), até 2048 caracteres |
+| Código Curto | Identificador compartilhável | Obrigatório, único, *case-sensitive* |
+| Contagem de Cliques | Quantidade acumulada de redirecionamentos | Obrigatória, inicia em zero, não negativa |
+| Data de Criação | Momento do cadastro em UTC | Obrigatória, imutável após criação |
+| Data do Último Acesso | Momento do último redirecionamento em UTC | Opcional (nula até o primeiro acesso) |
 
 ---
 
 ## 5. Casos de Borda (Edge Cases)
 
-1. **URL com espaços nas pontas:** Realizar `Trim()` antes de validar.
-2. **Colisão de `shortCode`:** Caso o código gerado já exista no banco, tentar gerar novo código até `5` vezes; se persistir, retornar `500` ou `503` com log de erro.
-3. **Conflito de rotas:** Garantir que códigos curtos não colidam com rotas reservadas (`/api/...`, `/health`, `/swagger`, `/openapi`).
-4. **Acesso simultâneo ao mesmo `shortCode`:** Garantir que dois redirecionamentos paralelos resultem em `clickCount = 2`.
+1. **Espaços nas extremidades:** Uma URL válida cercada por espaços deve ser normalizada antes da validação e persistida sem os espaços extras.
+2. **Colisão de código gerado:** Caso um código gerado já esteja em uso, o sistema deve gerar outro código automaticamente antes de falhar a criação; se não conseguir após novas tentativas, deve retornar erro sem corromper dados existentes.
+3. **Conflito com rotas do sistema:** Códigos curtos gerados não podem impedir o funcionamento das rotas de operação, estatísticas, saúde ou documentação da própria API.
+4. **Acessos simultâneos:** Múltiplas requisições paralelas de redirecionamento ao mesmo código curto devem contabilizar todos os cliques corretamente.
