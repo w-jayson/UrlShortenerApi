@@ -1,0 +1,11 @@
+namespace UrlShortenerApi.Models;
+
+public class ShortenedUrl
+{
+    public int Id { get; set; }
+    public string OriginalUrl { get; set; } = string.Empty;
+    public string ShortCode { get; set; } = string.Empty;
+    public long ClickCount { get; set; }
+    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public DateTime? LastAccessedAtUtc { get; set; }
+}

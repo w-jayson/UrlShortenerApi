@@ -31,22 +31,22 @@ Cada fase termina com um **Checkpoint** para conferência e entendimento antes d
 
 ## Fase 2 — Dados, Modelos e Banco (EF Core + SQLite)
 
-- [ ] **2.1. Criar `Models/ShortenedUrl.cs`**
+- [x] **2.1. Criar `Models/ShortenedUrl.cs`**
   - Entidade com `Id` (`int`), `OriginalUrl` (`string`), `ShortCode` (`string`), `ClickCount` (`long`), `CreatedAtUtc` (`DateTime`) e `LastAccessedAtUtc` (`DateTime?`).
   - *Conceito:* modelagem simples de entidade EF Core e uso de UTC (`DateTime.UtcNow`) para consistência de datas.
-- [ ] **2.2. Criar `Models/Dtos.cs`**
+- [x] **2.2. Criar `Models/Dtos.cs`**
   - `CreateUrlRequest`: record com `[Required]` e `[MaxLength(2048)]`.
   - `ShortUrlResponse` e `UrlStatsResponse`: records imutáveis de saída + método/extensão de mapeamento manual a partir de `ShortenedUrl`.
   - `Result<T>` e enum de tipo de erro (`Validation`, `NotFound`, `Unexpected`): retorno explícito para falhas de negócio sem lançar exceções de fluxo.
   - *Conceito:* por que separar entidade de banco de DTOs (contratos da API), uso de `record` para imutabilidade, Data Annotations para validação de borda e Result Pattern.
-- [ ] **2.3. Criar `Data/AppDbContext.cs`**
+- [x] **2.3. Criar `Data/AppDbContext.cs`**
   - Configurar `DbSet<ShortenedUrl>` e Fluent API em `OnModelCreating`:
     - Índice `UNIQUE` em `ShortCode` (garante unicidade no banco e busca rápida `O(log n)`).
     - `MaxLength(2048)` e `IsRequired()` em `OriginalUrl`.
     - `MaxLength(7)` e `IsRequired()` em `ShortCode`.
     - Valor default `0` em `ClickCount`.
   - *Conceito:* Fluent API vs Data Annotations, impacto do índice único na prevenção de colisão em concorrência e diferenciação de case no SQLite.
-- [ ] **2.4. Connection string e Migration inicial**
+- [x] **2.4. Connection string e Migration inicial**
   - Configurar `ConnectionStrings:DefaultConnection` em `appsettings.json` (`Data Source=urlshortener.db`).
   - Registrar `AddDbContext<AppDbContext>` no `Program.cs` (lendo a connection string).
   - Gerar migration `InitialCreate` (`dotnet ef migrations add InitialCreate`) e aplicar (`dotnet ef database update`).

@@ -1,6 +1,12 @@
+using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
+using UrlShortenerApi.Data;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")
+        ?? "Data Source=urlshortener.db"));
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
