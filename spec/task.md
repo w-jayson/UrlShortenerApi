@@ -7,16 +7,16 @@ Cada fase termina com um **Checkpoint** para conferência e entendimento antes d
 
 ## Fase 1 — Setup do Projeto e Pipeline HTTP
 
-- [ ] **1.1. Criar solução e projetos**
+- [x] **1.1. Criar solução e projetos**
   - Criar `UrlShortenerApi.sln`, projeto Web API `src/UrlShortenerApi` em **.NET 10** (`net10.0`, `<Nullable>enable</Nullable>`) e projeto xUnit `tests/UrlShortenerApi.Tests` referenciando a API.
   - Criar `.gitignore` padrão .NET (`bin/`, `obj/`, `*.db`, `*.db-shm`, `*.db-wal`).
   - *Conceito:* separação entre solução (`.sln`), código da aplicação (`src/`) e testes (`tests/`), além de `Nullable` habilitado para evitar `NullReferenceException` em tempo de compilação.
-- [ ] **1.2. Instalar pacotes NuGet**
+- [x] **1.2. Instalar pacotes NuGet**
   - `Microsoft.EntityFrameworkCore.Sqlite` (provedor de banco SQLite para EF Core).
   - `Microsoft.EntityFrameworkCore.Design` (ferramenta de design-time para gerar migrations).
   - `Microsoft.AspNetCore.OpenApi` (geração nativa do documento OpenAPI no .NET 10).
   - `Scalar.AspNetCore` (interface interativa Scalar para explorar e testar os endpoints).
-- [ ] **1.3. Configurar `Program.cs`**
+- [x] **1.3. Configurar `Program.cs`**
   - Registrar `AddControllers()`, `AddOpenApi()`, `AddProblemDetails()` e `AddHealthChecks()`.
   - Configurar pipeline: `UseExceptionHandler()` (converte exceções não tratadas em RFC 9457 `ProblemDetails`), HTTPS, `MapOpenApi()` + `MapScalarApiReference()` (em `IsDevelopment()`), `MapControllers()` e `MapHealthChecks("/health")`.
   - Expor `public partial class Program;` ao final para permitir `WebApplicationFactory<Program>` nos testes de integração.
