@@ -34,7 +34,7 @@ Cada fase termina com um **Checkpoint** para conferência e entendimento antes d
 - [x] **2.1. Criar `Models/ShortenedUrl.cs`**
   - Entidade com `Id` (`int`), `OriginalUrl` (`string`), `ShortCode` (`string`), `ClickCount` (`long`), `CreatedAtUtc` (`DateTime`) e `LastAccessedAtUtc` (`DateTime?`).
   - *Conceito:* modelagem simples de entidade EF Core e uso de UTC (`DateTime.UtcNow`) para consistência de datas.
-- [ ] **2.2. Separar `Models/Dtos.cs`, `Models/Result.cs` e `Models/ShortenedUrlMappings.cs`**
+- [x] **2.2. Separar `Models/Dtos.cs`, `Models/Result.cs` e `Models/ShortenedUrlMappings.cs`**
   - `Models/Dtos.cs`: manter apenas os contratos HTTP (`CreateUrlRequest` com `[Required]` e `[MaxLength(2048)]`, `ShortUrlResponse` e `UrlStatsResponse`).
   - `Models/Result.cs`: `ErrorType` (`Validation`, `NotFound`, `Unexpected`) e `Result<T>` para falhas de negócio sem exceções de fluxo.
   - `Models/ShortenedUrlMappings.cs`: métodos de extensão `ToShortUrlResponse` e `ToStatsResponse`.

@@ -1,3 +1,4 @@
+// Caso de uso de redirecionamento: incrementa cliques atomicamente no banco e retorna a URL original.
 using Microsoft.EntityFrameworkCore;
 using UrlShortenerApi.Data;
 using UrlShortenerApi.Models;
@@ -12,6 +13,7 @@ public class ResolveUrlService(AppDbContext dbContext)
     {
         var now = DateTime.UtcNow;
 
+        // ExecuteUpdateAsync gera um UPDATE direto no SQLite (ClickCount + 1), evitando perda de cliques em acessos concorrentes.
         var rowsAffected = await dbContext.ShortenedUrls
             .Where(u => u.ShortCode == shortCode)
             .ExecuteUpdateAsync(setters => setters
@@ -26,6 +28,7 @@ public class ResolveUrlService(AppDbContext dbContext)
                 $"Short code '{shortCode}' was not found.");
         }
 
+        // Busca apenas a URL original sem rastreamento do EF Core (somente leitura).
         var originalUrl = await dbContext.ShortenedUrls
             .AsNoTracking()
             .Where(u => u.ShortCode == shortCode)

@@ -1,3 +1,4 @@
+// Caso de uso de criação de URL encurtada: valida a entrada, gera o shortCode e persiste com retry em colisões.
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using UrlShortenerApi.Data;
@@ -22,6 +23,7 @@ public class CreateShortUrlService(AppDbContext dbContext, ShortCodeGenerator co
                 validationResult.ErrorMessage);
         }
 
+        // Tenta gerar e salvar um código único até o limite configurado caso ocorra colisão no índice UNIQUE.
         for (var attempt = 1; attempt <= MaxCodeGenerationAttempts; attempt++)
         {
             var entity = new ShortenedUrl
@@ -40,7 +42,7 @@ public class CreateShortUrlService(AppDbContext dbContext, ShortCodeGenerator co
             }
             catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
             {
-                // Detach failed entity so the next retry starts with a clean Change Tracker state.
+                // Desanexa a entidade que falhou para que o Change Tracker do EF Core não tente inseri-la novamente no próximo retry.
                 dbContext.Entry(entity).State = EntityState.Detached;
             }
         }
@@ -50,6 +52,7 @@ public class CreateShortUrlService(AppDbContext dbContext, ShortCodeGenerator co
             "Failed to generate a unique short code. Please try again.");
     }
 
+    // Código 19 no SQLite representa SQLITE_CONSTRAINT (violação de restrição, como índice UNIQUE).
     private static bool IsUniqueConstraintViolation(DbUpdateException ex) =>
         ex.InnerException is SqliteException { SqliteErrorCode: 19 };
 }

@@ -1,3 +1,4 @@
+// Valida e normaliza a URL original antes da persistência, permitindo apenas esquemas HTTP/HTTPS.
 using UrlShortenerApi.Models;
 
 namespace UrlShortenerApi.Services;
@@ -22,6 +23,7 @@ public static class UrlValidator
                 $"URL must not exceed {MaxUrlLength} characters.");
         }
 
+        // Bloqueia URLs relativas e esquemas perigosos (ex.: javascript:, data:, file:) para evitar Open Redirect/XSS.
         if (!Uri.TryCreate(trimmedUrl, UriKind.Absolute, out var uri) ||
             (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
         {
