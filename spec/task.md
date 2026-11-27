@@ -34,11 +34,11 @@ Cada fase termina com um **Checkpoint** para conferência e entendimento antes d
 - [x] **2.1. Criar `Models/ShortenedUrl.cs`**
   - Entidade com `Id` (`int`), `OriginalUrl` (`string`), `ShortCode` (`string`), `ClickCount` (`long`), `CreatedAtUtc` (`DateTime`) e `LastAccessedAtUtc` (`DateTime?`).
   - *Conceito:* modelagem simples de entidade EF Core e uso de UTC (`DateTime.UtcNow`) para consistência de datas.
-- [x] **2.2. Criar `Models/Dtos.cs`**
-  - `CreateUrlRequest`: record com `[Required]` e `[MaxLength(2048)]`.
-  - `ShortUrlResponse` e `UrlStatsResponse`: records imutáveis de saída + método/extensão de mapeamento manual a partir de `ShortenedUrl`.
-  - `Result<T>` e enum de tipo de erro (`Validation`, `NotFound`, `Unexpected`): retorno explícito para falhas de negócio sem lançar exceções de fluxo.
-  - *Conceito:* por que separar entidade de banco de DTOs (contratos da API), uso de `record` para imutabilidade, Data Annotations para validação de borda e Result Pattern.
+- [ ] **2.2. Separar `Models/Dtos.cs`, `Models/Result.cs` e `Models/ShortenedUrlMappings.cs`**
+  - `Models/Dtos.cs`: manter apenas os contratos HTTP (`CreateUrlRequest` com `[Required]` e `[MaxLength(2048)]`, `ShortUrlResponse` e `UrlStatsResponse`).
+  - `Models/Result.cs`: `ErrorType` (`Validation`, `NotFound`, `Unexpected`) e `Result<T>` para falhas de negócio sem exceções de fluxo.
+  - `Models/ShortenedUrlMappings.cs`: métodos de extensão `ToShortUrlResponse` e `ToStatsResponse`.
+  - *Conceito:* separação por papel em arquivos pequenos (contratos HTTP vs tipo auxiliar de fluxo vs mapeamento manual), uso de `record` para imutabilidade, Data Annotations para validação de borda e Result Pattern.
 - [x] **2.3. Criar `Data/AppDbContext.cs`**
   - Configurar `DbSet<ShortenedUrl>` e Fluent API em `OnModelCreating`:
     - Índice `UNIQUE` em `ShortCode` (garante unicidade no banco e busca rápida `O(log n)`).
@@ -61,20 +61,27 @@ Cada fase termina com um **Checkpoint** para conferência e entendimento antes d
 
 ## Fase 3 — Regras de Negócio e Controller
 
-- [ ] **3.1. Criar `Services/ShortCodeGenerator.cs`**
+- [x] **3.1. Criar `Services/ShortCodeGenerator.cs`**
   - Gerar código de 7 caracteres usando alfabeto Base62 (`0-9A-Za-z`) com `RandomNumberGenerator.GetInt32(62)`.
   - *Conceito:* por que usar `RandomNumberGenerator` (criptograficamente seguro e thread-safe) em vez de `System.Random`, e por que $62^7$ (~3,5 trilhões) reduz drasticamente colisões.
-- [ ] **3.2. Criar `Services/UrlShortenerService.cs`**
-  - **Criar URL:** aplicar `Trim()`, validar via `Uri.TryCreate` se é absoluta com esquema `http` ou `https` e `<= 2048` chars; gerar `ShortCode` com até 5 tentativas caso haja violação de índice único no `SaveChangesAsync`; retornar `Result<ShortUrlResponse>`.
-  - **Resolver URL (`+1` clique):** usar `ExecuteUpdateAsync` filtrando por `ShortCode` para incrementar `ClickCount` (`+ 1`) e atualizar `LastAccessedAtUtc` atomicamente no banco; se `rowsAffected == 0`, retornar `NotFound`; caso contrário buscar `OriginalUrl` e retornar `Result<string>`.
-  - **Consultar Stats:** buscar com `AsNoTracking()` (somente leitura, sem rastreamento do Change Tracker e sem incrementar cliques) e mapear para `UrlStatsResponse`.
-  - *Conceito:* prevenção de race condition na contagem de cliques (`ExecuteUpdateAsync` vs read-modify-write), `AsNoTracking()` para performance em leitura e tratamento de colisão com retry limitado.
-- [ ] **3.3. Criar `Controllers/UrlsController.cs`**
+- [x] **3.2. Criar `Services/UrlValidator.cs`**
+  - Aplicar `Trim()` e validar obrigatoriedade, limite `<= 2048` chars e `Uri.TryCreate` absoluto com esquema `http` ou `https`, retornando `Result<string>`.
+  - *Conceito:* validação pura e isolada (classe estática sem dependência de banco ou DI), fácil de ler e testar unitariamente.
+- [x] **3.3. Criar `Services/CreateShortUrlService.cs`**
+  - Validar a URL via `UrlValidator`, gerar `ShortCode` com `ShortCodeGenerator` em até 5 tentativas caso haja violação de índice único no `SaveChangesAsync` (desanexando a entidade que falhou) e retornar `Result<ShortUrlResponse>`.
+  - *Conceito:* tratamento de colisão com retry limitado e comportamento do Change Tracker do EF Core em falhas de persistência.
+- [x] **3.4. Criar `Services/ResolveUrlService.cs`**
+  - Usar `ExecuteUpdateAsync` filtrando por `ShortCode` para incrementar `ClickCount` (`+ 1`) e atualizar `LastAccessedAtUtc` atomicamente no banco; se `rowsAffected == 0`, retornar `NotFound`; caso contrário buscar `OriginalUrl` com `AsNoTracking()` e retornar `Result<string>`.
+  - *Conceito:* prevenção de race condition na contagem de cliques (`ExecuteUpdateAsync` vs read-modify-write).
+- [x] **3.5. Criar `Services/GetUrlStatsService.cs`**
+  - Buscar com `AsNoTracking()` (somente leitura, sem rastreamento do Change Tracker e sem incrementar cliques) e mapear para `UrlStatsResponse`.
+  - *Conceito:* `AsNoTracking()` para performance em consultas somente leitura.
+- [ ] **3.6. Criar `Controllers/UrlsController.cs`**
   - Decorado com `[ApiController]` (ativa validação automática de `ModelState` retornando `400 ValidationProblemDetails`).
-  - `[HttpPost("api/urls")]`: recebe `CreateUrlRequest`, monta URL base da requisição (`Request.Scheme` + `Request.Host`), chama serviço e retorna `201 Created` (com header `Location`) ou `Problem(...)` em erro.
-  - `[HttpGet("{shortCode}")]`: chama resolução e retorna `Redirect(originalUrl)` (`302 Found`) ou `404 ProblemDetails`.
-  - `[HttpGet("api/urls/{shortCode}/stats")]`: chama stats e retorna `200 OK` ou `404 ProblemDetails`.
-  - Registrar `ShortCodeGenerator` e `UrlShortenerService` no container DI (`Program.cs`).
+  - `[HttpPost("api/urls")]`: recebe `CreateUrlRequest`, monta URL base da requisição (`Request.Scheme` + `Request.Host`), chama `CreateShortUrlService` e retorna `201 Created` (com header `Location`) ou `Problem(...)` em erro.
+  - `[HttpGet("{shortCode}")]`: chama `ResolveUrlService` e retorna `Redirect(originalUrl)` (`302 Found`) ou `404 ProblemDetails`.
+  - `[HttpGet("api/urls/{shortCode}/stats")]`: chama `GetUrlStatsService` e retorna `200 OK` ou `404 ProblemDetails`.
+  - Registrar `ShortCodeGenerator`, `CreateShortUrlService`, `ResolveUrlService` e `GetUrlStatsService` no container DI (`Program.cs`).
   - *Conceito:* ciclo de vida no DI (`Scoped` vs `Singleton`), diferença entre `301` (permanente/cacheado pelo navegador) e `302` (temporário, permite contar todos os cliques) e mapeamento de `Result<T>` para códigos HTTP.
 
 **Checkpoint Fase 3:**
@@ -91,14 +98,16 @@ Cada fase termina com um **Checkpoint** para conferência e entendimento antes d
 
 - [ ] **4.1. Testes unitários (`tests/UrlShortenerApi.Tests/`)**
   - `ShortCodeGeneratorTests`: valida comprimento exato `7` e se todos os caracteres pertencem ao conjunto Base62 (`0-9A-Za-z`).
-  - `UrlShortenerServiceTests`: valida aceitação de `http`/`https`, rejeição de `javascript:`, URLs relativas, `> 2048` chars, `Trim()` e comportamento de retry em colisão de `ShortCode`.
+  - `UrlValidatorTests`: valida `Trim()`, aceitação de `http`/`https` e rejeição de `javascript:`, URLs relativas, vazias e `> 2048` chars.
+  - `CreateShortUrlServiceTests`: valida criação de URL e comportamento de retry em colisão de `ShortCode`.
   - *Conceito:* isolamento de regra de negócio em testes unitários rápidos.
-- [ ] **4.2. Testes de integração (`UrlsControllerIntegrationTests`)**
-  - Configurar `WebApplicationFactory<Program>` substituindo o SQLite em disco por SQLite em memória (`DataSource=:memory:` com conexão aberta durante o teste).
-  - Cobrir fluxo completo: `POST /api/urls` -> `GET /{shortCode}` (`302`, sem seguir redirect) -> `GET /api/urls/{shortCode}/stats` (`clickCount == 1`) -> `404` em código inexistente -> case-sensitivity do `shortCode` -> `GET /health`.
-  - *Conceito:* diferença entre teste unitário e teste de integração end-to-end no pipeline ASP.NET Core real (roteamento, model binding, filtros, DI, EF Core e SQLite).
+- [ ] **4.2. Testes de integração (`CustomWebApplicationFactory` e `UrlsControllerIntegrationTests`)**
+  - `CustomWebApplicationFactory.cs`: isolar a configuração do `WebApplicationFactory<Program>` substituindo o SQLite em disco por SQLite em memória (`DataSource=:memory:` com conexão aberta durante o teste).
+  - `UrlsControllerIntegrationTests.cs`: cobrir fluxo completo (`POST /api/urls` -> `GET /{shortCode}` `302` sem seguir redirect -> `GET /api/urls/{shortCode}/stats` `clickCount == 1` -> `404` em código inexistente -> case-sensitivity do `shortCode` -> `GET /health`).
+  - *Conceito:* separação entre infraestrutura de host de teste e casos de teste, e diferença entre teste unitário e teste de integração end-to-end no pipeline ASP.NET Core real.
 - [ ] **4.3. Verificação final**
   - Executar `dotnet build` e `dotnet test` garantindo 100% de aprovação.
+  - Garantir que todos os arquivos `.cs` possuam comentário de propósito no topo e explicações objetivas nos trechos principais, conforme [constitution.md](./constitution.md).
   - Revisar código contra [constitution.md](./constitution.md) e [spec.md](./spec.md) e marcar todos os checkboxes de `spec/task.md`.
 
 **Checkpoint Fase 4:**

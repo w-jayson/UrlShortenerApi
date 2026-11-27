@@ -14,11 +14,12 @@ A **UrlShortenerApi** é uma API REST em **.NET 10 (ASP.NET Core / C#)** para en
 
 1. **Arquitetura Enxuta (Projeto Único por Responsabilidade):**
    - `Data/`: `AppDbContext` (EF Core + SQLite) e `Migrations/`.
-   - `Models/`: Entidade `ShortenedUrl` e `Dtos.cs` (`records` com Data Annotations e mapeamento manual).
-   - `Services/`: `ShortCodeGenerator` e `UrlShortenerService` (regras de negócio: criar, resolver com `+1` clique atômico, consultar stats) usando `Result<T>` para falhas esperadas.
-   - `Controllers/`: `UrlsController` (`[ApiController]`), validação automática via Data Annotations e conversão de falhas para `ProblemDetails`.
-2. **Fluxo Explícito sem Over-Engineering:**
-   - Sem múltiplos projetos, sem MediatR, sem AutoMapper/Mapster e sem abstrações especulativas.
+   - `Models/`: separados por papel — entidade `ShortenedUrl.cs`, contratos HTTP `Dtos.cs` (`records` com Data Annotations), retorno de fluxo `Result.cs` (`ErrorType` e `Result<T>`) e mapeamentos manuais `ShortenedUrlMappings.cs`.
+   - `Services/`: serviços focados de responsabilidade única (`ShortCodeGenerator`, `UrlValidator`, `CreateShortUrlService`, `ResolveUrlService`, `GetUrlStatsService`) usando `Result<T>` para falhas esperadas.
+   - `Controllers/`: `UrlsController` (`[ApiController]`), camada fina para validação automática via Data Annotations, delegação aos serviços e conversão de falhas para `ProblemDetails`.
+2. **Separação por Papel em Arquivos Pequenos (Padrão do Sistema):**
+   - Todo código novo ou refatorado no projeto deve nascer separado por papel/responsabilidade coesa (Nível 1): 1 serviço por operação em `Services/`, entidade / contratos DTO / `Result<T>` / mapeamentos em arquivos distintos em `Models/`, e infraestrutura de teste (ex.: `CustomWebApplicationFactory`) separada das classes de teste em `tests/`.
+   - Manter classes concretas simples sem criar interfaces especulativas, múltiplos projetos, MediatR ou AutoMapper/Mapster.
    - Mapeamento manual entre Entidades e DTOs.
 3. **Spec-Driven Development (SDD):**
    - Nenhuma funcionalidade é implementada sem estar descrita em `spec.md`, planejada em `plan.md` e quebrada em tarefas em `task.md`.
@@ -36,7 +37,7 @@ A **UrlShortenerApi** é uma API REST em **.NET 10 (ASP.NET Core / C#)** para en
 - **Documentação da API:** OpenAPI nativo (`Microsoft.AspNetCore.OpenApi`) + **Scalar** (`Scalar.AspNetCore`) habilitado em ambiente de desenvolvimento.
 - **Observabilidade:** `ILogger` padrão do ASP.NET Core e endpoint `/health` para health check.
 - **Execução:** Local via `dotnet run` / `dotnet test` (sem Docker ou CI nesta etapa).
-- **Validação:** Data Annotations + `[ApiController]` nos DTOs de entrada, complementados por validações de URL no `UrlShortenerService`.
+- **Validação:** Data Annotations + `[ApiController]` nos DTOs de entrada, complementados por validações de URL no `UrlValidator`.
 - **Testes:** xUnit + `WebApplicationFactory<Program>` para testes de integração e testes unitários para `Services/`.
 
 ---
@@ -60,12 +61,14 @@ A **UrlShortenerApi** é uma API REST em **.NET 10 (ASP.NET Core / C#)** para en
 
 ## 5. Convenções de Código e Git
 
-- **Idioma do Código:** Identificadores, classes, métodos, rotas e mensagens técnicas de código em **Inglês**; documentação SDD em **Português (BR)**.
+- **Idioma do Código:** Identificadores, classes, métodos, rotas e mensagens técnicas de código em **Inglês**; documentação SDD e comentários explicativos nos arquivos `.cs` em **Português (BR)**.
+- **Comentários Explicativos por Arquivo:** Todo arquivo `.cs` criado ou alterado no projeto deve ter um comentário curto no topo descrevendo a responsabilidade daquele arquivo e comentários objetivos nos trechos de lógica importantes (regras de negócio, consultas EF Core, tratamento de erros/concorrência) para facilitar revisão futura e entendimento por outras pessoas.
 - **Formatação:** Seguir as convenções padrão do C# (`.editorconfig` / `dotnet format`).
 - **Critério de Conclusão (Definition of Done):**
   - Código compila sem warnings relevantes.
   - Testes unitários e de integração passam (`dotnet test`).
   - Documentação OpenAPI reflete os endpoints implementados.
+  - Arquivos `.cs` possuem comentários claros de propósito e lógica principal.
   - Tarefa correspondente marcada como concluída em `spec/task.md`.
 
 ---
@@ -75,5 +78,5 @@ A **UrlShortenerApi** é uma API REST em **.NET 10 (ASP.NET Core / C#)** para en
 - **Zero Enrolação:** Responda apenas com o estritamente necessário. Elimine saudações, introduções, resumos do que foi feito e explicações não solicitadas.
 - **Respostas Diretas:** Comece imediatamente pela solução, código ou dado solicitado.
 - **Arquivos e Código Enxutos:** Escreva o código mais limpo e minimalista possível para atender aos requisitos. Não crie abstrações especulativas, boilerplate desnecessário ou over-engineering sem solicitação explícita.
-- **Sem Comentários Óbvios:** Não comente *o que* o código faz. Comente apenas o *porquê* em regras de negócio complexas ou workarounds.
+- **Comentários Objetivos e Didáticos:** Sempre incluir um comentário resumindo o propósito de cada arquivo `.cs` e explicar brevemente blocos de regra de negócio, acesso a banco ou decisões técnicas relevantes — evitando apenas comentários repetitivos em linhas triviais (como atribuições simples).
 - **Edições Cirúrgicas:** Ao alterar arquivos existentes, modifique apenas as linhas necessárias, sem reformatar código não relacionado.
